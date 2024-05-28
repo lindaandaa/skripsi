@@ -1,8 +1,11 @@
+import datetime
+import os
 import tkinter as tk
 from tkinter import ttk
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import numpy as np
+import pandas as pd
 import serial
 from collections import deque
 import random 
@@ -26,8 +29,8 @@ class EGM_GUI:
         self.file_menu.add_command(label="Exit", command=root.destroy)
 
         # Menu "Options"
-       # self.options_menu = tk.Menu(self.navbar, tearoff=0)
-       # self.navbar.add_cascade(label="Options", menu=self.options_menu)
+        # self.options_menu = tk.Menu(self.navbar, tearoff=0)
+        # self.navbar.add_cascade(label="Options", menu=self.options_menu)
 
         # Submenu "COM MANAGER"
         #self.com_manager_menu = tk.Menu(self.options_menu, tearoff=0)
@@ -46,8 +49,8 @@ class EGM_GUI:
         # Menu "Save"
         self.save_menu = tk.Menu(self.navbar, tearoff=0)
         self.navbar.add_cascade(label="Save", menu=self.save_menu)
-        self.save_menu.add_command(label="Save Data")
-        self.save_menu.add_command(label="Save Image")
+        self.save_menu.add_command(label="Save Data",command=self.save_data)
+        self.save_menu.add_command(label="Save Image",command=self.save_image)
 
         # Footer Menu
         self.footer_frame = ttk.Frame(root)
@@ -74,15 +77,12 @@ class EGM_GUI:
         #self.age_entry = ttk.Entry(self.footer_frame)
         #self.age_entry.pack(side=tk.LEFT)
 
-        self.result_label = ttk.Label(self.footer_frame,
-                                            text = "Status: Normal/Tidak Lelah/Kelelahan", 
-                                      anchor="e")
+        self.result_label = ttk.Label(self.footer_frame,text = "Status: Normal/Tidak Lelah/Kelelahan", anchor="e")
         self.result_label.pack(side=tk.BOTTOM, padx=550)
 
         self.status_label = ttk.Label(root, text="Frekuensi: ", anchor="w", font=("Helvetica", 9))
         self.status_label.pack(side=tk.BOTTOM, padx=300)
 
-   
         # Create the plot
         self.fig, (self.ax1, self.ax2) = plt.subplots(1, 2, figsize=(12, 4))
         self.ax1.set_title('EGM Signal 1')
@@ -106,6 +106,9 @@ class EGM_GUI:
         self.data2 = deque(maxlen=1000)
 
         self.animation()
+
+        self.save_interval_ms = 3 * 60 * 1000  # Save data every 3 minutes
+        self.periodic_save()
 
     def animation(self):
         def update_plot():
@@ -134,11 +137,47 @@ class EGM_GUI:
         # Call the update_plot function initially
         update_plot()
 
+    def save_image(self):
+        # Ensure the "record" directory exists
+        os.makedirs("record", exist_ok=True)
 
+        # Get the current timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
+        # Create the filename with the timestamp
+        filename = f"record/plot_{timestamp}.png"
 
+        # Save the plot as an image
+        self.fig.savefig(filename)
+        print(f"Image saved to {filename}")
+        
+    def save_data(self):
+        # Ensure the "record" directory exists
+        os.makedirs("record", exist_ok=True)
 
+        # Get the current timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
+        # Create the filename with the timestamp
+        filename = f"record/data_{timestamp}.csv"
+
+        # Combine data1 and data2 into a DataFrame
+        df = pd.DataFrame({
+            'Time': range(len(self.data1)),
+            'EGM Signal 1': list(self.data1),
+            'EGM Signal 2': list(self.data2)
+        })
+
+        # Save the DataFrame to a CSV file
+        df.to_csv(filename, index=False)
+        print(f"Data saved to {filename}")
+
+    def periodic_save(self):
+        # Save data to CSV
+        self.save_data()
+
+        # Schedule the next save after the specified interval
+        self.root.after(self.save_interval_ms, self.periodic_save)
 
 
 # Kemudian, dalam kode yang memanggil EGM_GUI:
